@@ -1,0 +1,7 @@
+.git
+runtime
+node_modules
+.env*
+phone/.env
+preview*.png
+verification*.json

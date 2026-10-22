@@ -3,3 +3,7 @@ runtime/
 preview*.png
 verification*.json
 node_modules/
+
+__pycache__/
+*.pyc
+!phone/.env.example
