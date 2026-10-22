@@ -95,3 +95,7 @@ AudioSocket TCP 9092는 컨테이너 내부에서만 사용하며, 기존 Ollama
 현재 구현은 문장 전체를 합성한 뒤 8kHz PCM16으로 변환해 전화에 재생합니다. 실시간 청크 재생은 아직 구현하지 않았습니다. CPU 4스레드 예비 측정에서 약 5.4–5.8초 음성을 약 2.5–3.7초에 생성했으며 첫 로드와 STT·LLM 시간은 제외한 수치입니다. 장문·숫자·영문·이름은 별도 검증해야 합니다.
 
 phone/check_voice.py는 runtime/phone/samples에 24kHz 원본과 전화용 8kHz WAV를 저장하고 runtime/phone/voice-check.json에 실제 합성·전사 시간을 기록합니다. 최종 자연스러움은 직접 청취해 평가하세요. 웹 브라우저의 TTS는 변경하지 않았으며 Pocket은 SIP 전화 경로에 적용됩니다.
+
+## ClawOps WebSocket 경로
+
+Asterisk 없이 공식 SDK의 역방향 WebSocket과 같은 로컬 AI를 연결하는 별도 실행 경로를 추가했습니다. 번호 없는 모의 검증, 실번호 설정, 고정 휴대폰 전환·부재중 처리는 [CLAWOPS.md](CLAWOPS.md)를 따르세요. 기본값은 외부 연결·휴대폰 전환 비활성입니다.

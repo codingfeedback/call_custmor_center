@@ -1,3 +1,4 @@
 faster-whisper==1.2.1
 av==16.0.1
 pocket-tts==4.0.1
+clawops[agent]==0.69.0

@@ -1,0 +1,17 @@
+name: call-intake-clawops
+services:
+  clawops:
+    build:
+      context: ..
+      dockerfile: phone/Dockerfile
+    env_file: .env.clawops
+    environment:
+      OLLAMA_URL: ${PHONE_OLLAMA_URL:-http://host.docker.internal:11434}
+    command: ["python", "phone/clawops_main.py"]
+    volumes:
+      - voice-models:/models
+      - ../runtime/phone:/runtime
+      - ../faq.json:/app/faq.json:ro
+volumes:
+  voice-models:
+    name: call-intake-phone_voice-models

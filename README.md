@@ -87,3 +87,5 @@ git pull --ff-only
 ## 실제 전화 수신 준비
 
 번호 발급 전 SIP 소프트폰 내선 테스트와 무료 로컬 STT·TTS 구성은 [phone/README.md](phone/README.md)를 참고하세요. Asterisk + faster-whisper + eSpeak NG를 사용하며 기존 웹 테스트와 별도로 실행합니다. 기본은 loopback 수신 전용이고, 통신사 번호·IP 설정 및 실제 전화망 검증은 별도로 필요합니다.
+
+ClawOps WebSocket 연결(번호 없는 모의 검증, 로컬 AI 응대 후 고정 휴대폰 전환): [설정과 실행](phone/CLAWOPS.md). 기존 SIP 테스트는 그대로 유지됩니다.
