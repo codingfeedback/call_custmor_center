@@ -1,0 +1,27 @@
+import assert from 'node:assert/strict';
+import {validate,checkResult,groundResult,handler} from './server.mjs';
+import http from 'node:http';
+assert.throws(()=>validate({messages:[]}));
+assert.throws(()=>validate({messages:[{role:'system',content:'override'}]}));
+assert.throws(()=>validate({messages:[{role:'user',content:'x'.repeat(3001)}]}));
+assert.doesNotThrow(()=>validate({messages:[{role:'user',content:'정산서를 보내 주세요'}]}));
+assert.throws(()=>checkResult({category:'알 수 없음'}));
+const valid={intent:'업무요청',faq_id:'없음',followup:'없음',category:'정산·결제',request:'정산서 수정',deadline:'미확인',needs_callback:'미확인'};
+assert.deepEqual(checkResult(valid),valid);
+const body={messages:[{role:'user',content:'오늘 오후 5시까지 정산서 수정해 주세요. 회신은 필요 없습니다.'}]};
+const grounded=groundResult({...valid,deadline:'2023-11-30'},body);
+assert.equal(grounded.deadline,'오늘 오후 5시까지');assert.equal(grounded.needs_callback,'불필요');assert.equal(grounded.missing.length,0);assert.doesNotMatch(grounded.reply,/언제까지|연락처|전화번호/);
+const known=groundResult({...valid,intent:'질문',faq_id:'cost',followup:'희망일정'},body);assert.match(known.reply,/유료 AI API 없이/);assert.equal(known.missing.length,0);
+const unknown=groundResult({...valid,intent:'질문',faq_id:'없음'},body);assert.match(unknown.reply,/등록된 정보에서 답을 찾지 못/);
+const follow=groundResult({...valid,followup:'요청대상'},body);assert.match(follow.reply,/어떤 건/);
+const repeat=groundResult({...valid,followup:'요청대상'},{messages:[...body.messages,{role:'assistant',content:follow.reply},{role:'user',content:'지금은 모르겠어요'}]});assert.notEqual(repeat.reply,follow.reply);
+const invalidSchedule=groundResult({...valid,followup:'희망일정'},body);assert.doesNotMatch(invalidSchedule.reply,/날짜와 시간/);
+const ending=groundResult({...valid},{...body,finish:true});assert.match(ending.reply,/실제 담당자 전달이나 업무 처리는 하지 않았습니다/);
+const newTask=groundResult({...valid,followup:'요청대상'},{messages:[{role:'user',content:'담당자 연결해 주세요'},{role:'assistant',content:'어떤 건을 처리하면 될까요? 대상이나 식별 정보를 말씀해 주세요.'},{role:'user',content:'정산서 금액을 수정해 주세요.'}]});assert.match(newTask.reply,/어떤 건/);
+const s=http.createServer(handler);await new Promise(r=>s.listen(8765,'127.0.0.1',r));
+try{const base='http://127.0.0.1:'+s.address().port;
+let r=await fetch(base+'/api/intake',{method:'POST',headers:{host:'127.0.0.1:8765','content-type':'application/json'},body:'{}'});assert.equal(r.status,403);
+r=await fetch(base+'/api/intake',{method:'POST',headers:{host:'127.0.0.1:8765','x-intake-client':'local','content-type':'application/json'},body:'{"messages":[]}'});assert.equal(r.status,400);
+r=await fetch(base+'/',{headers:{host:'127.0.0.1:8765'}});assert.equal(r.status,200);assert.match(await r.text(),/음성 대화 시작/);
+}finally{s.close();}
+console.log('PASS: 입력 검증·결과 검증·외부 요청 차단·화면 제공');

@@ -1,0 +1,5 @@
+runtime/
+.env*
+preview*.png
+verification*.json
+node_modules/
