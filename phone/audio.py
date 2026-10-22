@@ -2,10 +2,8 @@ import audioop
 import io
 import os
 import struct
-import subprocess
-import tempfile
 import wave
-from pathlib import Path
+from tts import synthesize
 
 RATE = 8000
 FRAME_BYTES = 320
@@ -47,18 +45,6 @@ class Segmenter:
             self.__init__(self.threshold)
             return output
         return None
-
-def synthesize(text):
-    if not text or len(text) > 2500:
-        raise ValueError('음성 출력 텍스트 길이 오류')
-    with tempfile.TemporaryDirectory() as folder:
-        path = Path(folder, 'reply.wav')
-        subprocess.run(['espeak-ng', '-v', 'ko', '-s', '155', '-w', str(path), '--stdin'], input=text.encode('utf-8'), check=True, timeout=30, stdout=subprocess.DEVNULL)
-        with wave.open(str(path), 'rb') as stream:
-            if stream.getnchannels() != 1 or stream.getsampwidth() != 2:
-                raise ValueError('지원하지 않는 TTS 오디오')
-            pcm = stream.readframes(stream.getnframes())
-            return audioop.ratecv(pcm, 2, 1, stream.getframerate(), RATE, None)[0]
 
 class Speech:
     def __init__(self):

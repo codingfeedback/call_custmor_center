@@ -2,9 +2,9 @@
 
 ## 구현 범위
 
-070 → 통신사 SIP → Asterisk → AudioSocket PCM16 → faster-whisper → 기존 Node 접수 로직 → eSpeak NG 한국어 → 전화 음성.
+070 → 통신사 SIP → Asterisk → AudioSocket PCM16 → faster-whisper → 기존 Node 접수 로직 → Pocket TTS Korean 100M → 전화 음성.
 
-모든 AI 추론과 음성 처리는 로컬입니다. 전화망 요금은 별도입니다. 기본 STT는 multilingual Whisper small(CPU int8), TTS는 eSpeak NG ko(규칙 기반, 기계적인 음성)입니다. 합성 음성과 실제 전화의 인식 품질은 다릅니다. 동시 통화 1개, 최대 5분·15턴, 무음 45초에서 종료합니다. 상대가 #을 누르거나 "접수 종료"라고 말하면 종료합니다. 끼어들기와 담당자 전화 연결은 구현하지 않았습니다.
+모든 AI 추론과 음성 처리는 로컬입니다. 전화망 요금은 별도입니다. 기본 STT는 multilingual Whisper small(CPU int8), TTS는 seastar105/pocket-tts-korean-100m, Pocket 패키지 4.0.1, CPU 4스레드입니다. 모델과 기본 Alba 음성 상태를 상주시키고 최근 16개 문장의 오디오를 캐시합니다. 합성 음성과 실제 전화의 인식 품질은 다릅니다. 동시 통화 1개, 최대 5분·15턴, 무음 45초에서 종료합니다. 상대가 #을 누르거나 "접수 종료"라고 말하면 종료합니다. 끼어들기와 담당자 전화 연결은 구현하지 않았습니다.
 
 기존 웹 서버는 변경 없이 사용할 수 있습니다. 전화는 브라우저 STT·TTS를 사용하지 않고 별도 컨테이너에서 같은 server.mjs의 processIntake를 호출합니다. 전화용 컨테이너는 Docker Desktop의 host.docker.internal을 통해 기존 PC Ollama를 재사용합니다. 외부 공개 설정은 변경하지 않습니다. Linux 서버에서는 PHONE_OLLAMA_URL에 컨테이너에서 접근 가능한 사설 Ollama 주소를 지정해야 합니다. FAQ는 호스트 faq.json을 읽기 전용으로 연결해 즉시 반영합니다.
 
@@ -84,6 +84,14 @@ docker compose --env-file .\phone\.env -f .\phone\compose.yaml run --rm --no-dep
 
 AudioSocket TCP 9092는 컨테이너 내부에서만 사용하며, 기존 Ollama의 외부 공개 설정은 변경하지 않습니다. Asterisk 관리자 API·외부 발신은 비활성입니다. 통신사 SIP/RTP 연결과 실제 음성·NAT 품질은 번호 발급 후 검증해야 합니다.
 
-참고: [Asterisk AudioSocket](https://docs.asterisk.org/Configuration/Channel-Drivers/AudioSocket/), [faster-whisper](https://github.com/SYSTRAN/faster-whisper), [eSpeak NG 언어 지원](https://github.com/espeak-ng/espeak-ng/blob/master/docs/languages.md).
+참고: [Asterisk AudioSocket](https://docs.asterisk.org/Configuration/Channel-Drivers/AudioSocket/), [faster-whisper](https://github.com/SYSTRAN/faster-whisper), [Pocket TTS Korean 100M 모델·라이선스](https://huggingface.co/seastar105/pocket-tts-korean-100m).
 
-검증 스크립트 phone/check_sip.py는 로컬 SIP 인증과 RTP 안내 음성을, phone/check_audiosocket.py는 실제 PCM → STT → 접수 → TTS를 검사합니다. 실행 중 컨테이너에서 각각 python phone/스크립트명으로 실행합니다. 합성 한국어 전사에서 고유명사 오인식이 관찰되었으므로, 현재 음성 품질은 실사용 승인 수준으로 검증하지 않았습니다.
+검증 스크립트 phone/check_sip.py는 로컬 SIP 인증과 RTP 안내 음성을, phone/check_audiosocket.py는 실제 PCM → STT → 접수 → TTS를 검사합니다. 실행 중 컨테이너에서 각각 python phone/스크립트명으로 실행합니다. 합성 한국어 전사만으로 사람의 실제 발화 인식률을 판단할 수 없으므로, 현재 음성 품질은 실사용 승인 수준으로 검증하지 않았습니다.
+
+## Pocket TTS 교체 및 청취
+
+모델 가중치는 seastar105의 한국어 파생 모델(CC BY 4.0)이며 Kyutai Pocket-TTS에 기반합니다. 한국어 설정과 가중치 revision을 고정했습니다. 음성 프롬프트는 Kyutai가 제공한 Alba casual.wav를 사용하며, 기존 골프존 모델·개인 음성 자산은 가져오지 않습니다. 모델 다운로드와 패키지 설치는 최초 한 번 필요하며 통화 중 텍스트는 로컬에서 합성합니다. 기본 음성 파일은 첫 로드에 내려받아 캐시합니다.
+
+현재 구현은 문장 전체를 합성한 뒤 8kHz PCM16으로 변환해 전화에 재생합니다. 실시간 청크 재생은 아직 구현하지 않았습니다. CPU 4스레드 예비 측정에서 약 5.4–5.8초 음성을 약 2.5–3.7초에 생성했으며 첫 로드와 STT·LLM 시간은 제외한 수치입니다. 장문·숫자·영문·이름은 별도 검증해야 합니다.
+
+phone/check_voice.py는 runtime/phone/samples에 24kHz 원본과 전화용 8kHz WAV를 저장하고 runtime/phone/voice-check.json에 실제 합성·전사 시간을 기록합니다. 최종 자연스러움은 직접 청취해 평가하세요. 웹 브라우저의 TTS는 변경하지 않았으며 Pocket은 SIP 전화 경로에 적용됩니다.

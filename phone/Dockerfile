@@ -1,9 +1,10 @@
 FROM node:22-bookworm-slim AS node
 FROM ubuntu:24.04
 COPY --from=node /usr/local/bin/node /usr/local/bin/node
-RUN apt-get update && apt-get install -y --no-install-recommends asterisk python3 python3-venv espeak-ng ca-certificates && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends asterisk python3 python3-venv ca-certificates && rm -rf /var/lib/apt/lists/*
 RUN python3 -m venv /opt/voice
 COPY phone/requirements.txt /tmp/requirements.txt
+RUN /opt/voice/bin/pip install --no-cache-dir torch==2.8.0 torchaudio==2.8.0 --index-url https://download.pytorch.org/whl/cpu
 RUN /opt/voice/bin/pip install --no-cache-dir -r /tmp/requirements.txt
 WORKDIR /app
 COPY server.mjs faq.json ./

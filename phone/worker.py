@@ -7,7 +7,7 @@ from pathlib import Path
 from audio import FRAME_BYTES, Segmenter, Speech, packet, read_packet, synthesize
 
 CALLS = Path('/runtime/calls')
-GREETING = 'AI 접수 비서입니다. 통화 내용은 접수와 요약을 위해 텍스트로 기록됩니다. 어떤 업무로 연락하셨나요?'
+GREETING = '인공지능 접수 비서입니다. 통화 내용은 접수와 요약을 위해 텍스트로 기록됩니다. 어떤 업무로 연락하셨나요?'
 busy = False
 
 async def intake(messages, finish=False):
@@ -144,7 +144,7 @@ async def main():
     CALLS.mkdir(parents=True, exist_ok=True)
     # 첫 전화 전에 STT·한국어 TTS를 실제로 준비한다.
     speech = await asyncio.to_thread(Speech)
-    await asyncio.to_thread(synthesize, '음성 준비 완료')
+    await asyncio.to_thread(synthesize, GREETING)
     server = await asyncio.start_server(lambda r, w: handle(r, w, speech), '127.0.0.1', 9092)
     Path('/runtime/voice-ready').write_text('ready', encoding='utf-8')
     print('AudioSocket ready: 127.0.0.1:9092', flush=True)

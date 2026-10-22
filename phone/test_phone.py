@@ -4,6 +4,9 @@ import struct
 import unittest
 from audio import Segmenter, packet, read_packet
 from config import render
+from tts import synthesize_native
+from unittest.mock import patch
+import numpy as np
 ENV={'SIP_TEST_PASSWORD':'test_only_1234567890'}
 class ConfigTests(unittest.TestCase):
     def test_local_only(self):
@@ -38,4 +41,14 @@ class AudioTests(unittest.IsolatedAsyncioTestCase):
         segment=Segmenter();segment.push(struct.pack('<160h',*([2000]*160)))
         for _ in range(45): output=segment.push(b'\0'*320)
         self.assertEqual(output,b'')
+class TTSTests(unittest.TestCase):
+    def test_bad_text(self):
+        for text in ['', ' ', 'a'*2501, None]:
+            with self.assertRaises(ValueError): synthesize_native(text)
+    def test_pcm_conversion(self):
+        from tts import synthesize
+        pcm=np.array([0,1000,-1000]*240,dtype='<i2').tobytes()
+        with patch('tts.synthesize_native',return_value=(pcm,24000)):
+            out=synthesize('test')
+        self.assertEqual(len(out),480)
 if __name__=='__main__': unittest.main()
